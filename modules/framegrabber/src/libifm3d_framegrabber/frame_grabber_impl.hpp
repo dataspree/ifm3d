@@ -133,6 +133,12 @@ namespace ifm3d
     std::mutex front_buffer_mutex_;
     std::condition_variable front_buffer_cv_;
 
+  private:
+    /// Boolean that indicates whether the execution is tu be stopped. Is used in the receiver
+    /// Thread #thread_ as a stop condition for synchronous operations in order to be able to
+    /// gracefully exit even in case of a connection outage.
+    bool stopped {false};
+
   }; // end: class FrameGrabber::Impl
 
 } // end: namespace ifm3d
@@ -140,7 +146,6 @@ namespace ifm3d
 //============================================================
 // Impl -- Implementation Details
 //============================================================
-
 //-------------------------------------
 // ctor/dtor
 //-------------------------------------
@@ -196,13 +201,13 @@ ifm3d::FrameGrabber::Impl::Impl(ifm3d::Camera::Ptr cam,
 ifm3d::FrameGrabber::Impl::~Impl()
 {
   VLOG(IFM3D_TRACE) << "FrameGrabber dtor running...";
-
-  if (this->thread_ && this->thread_->joinable())
+  this->stopped = true;
+  if (static_cast<bool>(this->thread_) && this->thread_->joinable())
     {
       this->Stop();
+      this->sock_.close();
       this->thread_->join();
     }
-
   VLOG(IFM3D_TRACE) << "FrameGrabber destroyed.";
 }
 
@@ -457,8 +462,7 @@ ifm3d::FrameGrabber::Impl::SetTriggerBuffer()
 void
 ifm3d::FrameGrabber::Impl::Stop()
 {
-  this->io_service_.post(
-    []() { throw ifm3d::error_t(IFM3D_THREAD_INTERRUPTED); });
+  this->io_service_.post( []{ throw ifm3d::error_t(IFM3D_THREAD_INTERRUPTED); });
 }
 
 //---------------------------------------
@@ -548,12 +552,18 @@ ifm3d::FrameGrabber::Impl::Run()
     }
   catch (const std::exception& ex)
     {
-      LOG(WARNING) << "Exception: " << ex.what();
+      if (stopped)
+        {
+          LOG(INFO) << "Worker thread gracefully stopped: " << ex.what();
+        }
+      else
+        {
+          LOG(WARNING) << "Exception: " << ex.what();
+        }
     }
 
   LOG(INFO) << "FrameGrabber thread done.";
 }
-
 void
 ifm3d::FrameGrabber::Impl::TicketHandler(const boost::system::error_code& ec,
                                          std::size_t bytes_xferd,
@@ -570,7 +580,11 @@ ifm3d::FrameGrabber::Impl::TicketHandler(const boost::system::error_code& ec,
           boost::asio::buffer(&this->ticket_buffer_[bytes_read],
                               ifm3d::TICKET_ID_SZ - bytes_read));
 
-      if (bytes_read != ifm3d::TICKET_ID_SZ)
+      if (stopped)
+        {
+          return;
+        }
+      else if (bytes_read != ifm3d::TICKET_ID_SZ)
         {
           LOG(ERROR) << "Timeout reading ticket!";
           throw ifm3d::error_t(IFM3D_IO_ERROR);
@@ -597,7 +611,11 @@ ifm3d::FrameGrabber::Impl::TicketHandler(const boost::system::error_code& ec,
           boost::asio::buffer(&this->ticket_buffer_[bytes_read],
                               (ticket_sz + payload_sz) - bytes_read));
 
-      if (bytes_read != (ticket_sz + payload_sz))
+      if (stopped)
+        {
+          return;
+        }
+      else if (bytes_read != ticket_sz + payload_sz)
         {
           LOG(ERROR) << "Timeout reading whole response!";
           LOG(ERROR) << "Got " << bytes_read << " bytes of "
