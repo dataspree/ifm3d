@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.5)
+set(CMAKE_BUILD_TYPE Debug) # Release or Debug
 cmake_policy(SET CMP0048 NEW)
 # Manage version number here: Major.Minor.Patch (we don't use "tweak")
 project(IFM3D VERSION 0.11.2 LANGUAGES CXX)
 set(GIT_PROJECT_NAME "ifm3d")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Og -g")
 # Make our cmake functions accessible
 set(CMAKE_MODULE_PATH
     ${IFM3D_SOURCE_DIR}/cmake/modules
@@ -19,7 +21,7 @@ option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_MODULE_FRAMEGRABBER "Build the framegrabber module" ON)
 option(BUILD_MODULE_IMAGE "Build the image module" ON)
 option(BUILD_MODULE_OPENCV "Build the OpenCV-only image container" OFF)
-option(BUILD_MODULE_PCICCLIENT "Build the pcicclient module" OFF)
+option(BUILD_MODULE_PCICCLIENT "Build the pcicclient module" ON)
 option(BUILD_MODULE_TOOLS "Build the tools module" ON)
 option(BUILD_SDK_PKG "Build install packages for development purposes" ON)
 option(FORCE_OPENCV3 "Force the build to require OpenCV 3" OFF)
@@ -39,7 +41,7 @@ set(_include include CACHE STRING "Basename of the include-directory")
 set(GTEST_CMAKE_DIR "/usr/src/gtest" CACHE STRING "GTest cmake project dir")
 
 # Global compiler flags
-set(CMAKE_BUILD_TYPE Release) # Release or Debug
+set(CMAKE_BUILD_TYPE Debug) # Release or Debug
 set(CMAKE_CXX_EXTENSIONS OFF) # OFF -> -std=c++14, ON -> -std=gnu++14
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
@@ -47,7 +49,7 @@ if(WIN32)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
   add_definitions(-DBOOST_ALL_NO_LIB)
 else(WIN32)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix -s")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")# -Wno-literal-suffix -s")
 endif(WIN32)
 
 # create the cmake-package files
@@ -143,6 +145,8 @@ configure_file(
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 set(CPACK_GENERATOR "DEB")
 
+message("${CMAKE_CXX_FLAGS}<----------" )
+
 # Package architecture
 find_program(DPKG_CMD dpkg)
 if(NOT CMAKE_CROSSCOMPILING)
@@ -179,3 +183,4 @@ add_custom_target(repackage
   )
 
 include(CPack)
+message("--------------->${CMAKE_CXX_FLAGS}<----------" )

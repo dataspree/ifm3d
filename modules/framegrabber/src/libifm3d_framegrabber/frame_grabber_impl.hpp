@@ -205,7 +205,8 @@ ifm3d::FrameGrabber::Impl::~Impl()
   if (static_cast<bool>(this->thread_) && this->thread_->joinable())
     {
       this->Stop();
-      this->sock_.close();
+      this->sock_.cancel();
+      //this->sock_.close();
       this->thread_->join();
     }
   VLOG(IFM3D_TRACE) << "FrameGrabber destroyed.";
@@ -564,6 +565,7 @@ ifm3d::FrameGrabber::Impl::Run()
 
   LOG(INFO) << "FrameGrabber thread done.";
 }
+#include <iostream>
 void
 ifm3d::FrameGrabber::Impl::TicketHandler(const boost::system::error_code& ec,
                                          std::size_t bytes_xferd,
@@ -582,6 +584,7 @@ ifm3d::FrameGrabber::Impl::TicketHandler(const boost::system::error_code& ec,
 
       if (stopped)
         {
+          std::cout << "stopped :) \n";
           return;
         }
       else if (bytes_read != ifm3d::TICKET_ID_SZ)
@@ -613,6 +616,7 @@ ifm3d::FrameGrabber::Impl::TicketHandler(const boost::system::error_code& ec,
 
       if (stopped)
         {
+        std::cout << "stopped :) \n";
           return;
         }
       else if (bytes_read != ticket_sz + payload_sz)
