@@ -5,7 +5,7 @@ cmake_policy(SET CMP0048 NEW)
 project(IFM3D VERSION 0.11.2 LANGUAGES CXX)
 set(GIT_PROJECT_NAME "ifm3d")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Og -g")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Og -g")
 # Make our cmake functions accessible
 set(CMAKE_MODULE_PATH
     ${IFM3D_SOURCE_DIR}/cmake/modules
